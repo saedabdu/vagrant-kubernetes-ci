@@ -33,7 +33,6 @@ installK8s () {
 }
 
 installJenkins () {
-
     sudo apt-get update \
         && sudo apt-get install openjdk-8-jre-headless -y \
         && wget -q -O - https://pkg.jenkins.io/debian/jenkins-ci.org.key | sudo apt-key add - \
@@ -53,15 +52,13 @@ Host *
   StrictHostKeyChecking no
   UserKnownHostsFile=/dev/null
 SSHEOF
-chown -R jenkins:jenkins /var/lib/jenkins/.ssh/
+chown -R jenkins:jenkins /var/lib/jenkins/.ssh
 }
 
 if [[ $# -gt 0 ]]; then
     if [[ "$1" == "swarm" ]]; then
-        shift 1
         installDocker
-    elif [[ "$2" == "yes" ]]; then
-        shift 1
+    elif [[ "$1" == "jenkins" ]]; then
         installJenkins
         addJenkinsKey
         installDocker
@@ -70,7 +67,6 @@ if [[ $# -gt 0 ]]; then
         # Add jenkins to Docker group
         sudo usermod -aG docker jenkins
     elif [[ "$1" == "k8s" ]]; then
-        shift 1
         installK8s
     fi
 fi
