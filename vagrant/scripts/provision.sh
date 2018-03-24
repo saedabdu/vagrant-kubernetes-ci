@@ -18,7 +18,7 @@ installDocker () {
         && sudo service docker start
 }
 
-installComposer () {
+installDockerCompose () {
     sudo curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose \
         && sudo chmod +x /usr/local/bin/docker-compose
 }
@@ -48,9 +48,9 @@ if [[ $# -gt 0 ]]; then
         installDocker
     elif [[ "$1" == "jenkins" ]]; then
         shift 1
-        installDocker
-        installComposer
         installJenkins
+        installDocker
+        installDocerCompose
         installK8s
         # Add jenkins to Docker group
         sudo usermod -aG docker jenkins
