@@ -1,0 +1,5 @@
+.join-token-worker
+.k8s-join-logs
+.k8s-join-cmd
+.vagrant
+*.log
