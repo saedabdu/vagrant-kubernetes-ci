@@ -23,16 +23,6 @@ installDockerCompose () {
         && sudo chmod +x /usr/local/bin/docker-compose
 }
 
-installJenkins () {
-    sudo apt-get update \
-        && sudo apt-get install openjdk-8-jre-headless -y \
-        && wget -q -O - https://pkg.jenkins.io/debian/jenkins-ci.org.key | sudo apt-key add - \
-        && sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list' \
-        && sudo apt-get update \
-        && sudo apt-get install jenkins -y \
-        && sudo systemctl start jenkins.service
-}
-
 installK8s () {
     sudo apt-get update \
         && sudo apt-get install -y apt-transport-https ca-certificates software-properties-common curl docker.io=\1.13* \
@@ -42,13 +32,38 @@ installK8s () {
         && sudo apt-get install -y kubelet kubeadm kubectl kubernetes-cni
 }
 
+installJenkins () {
+
+    sudo apt-get update \
+        && sudo apt-get install openjdk-8-jre-headless -y \
+        && wget -q -O - https://pkg.jenkins.io/debian/jenkins-ci.org.key | sudo apt-key add - \
+        && sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list' \
+        && sudo apt-get update \
+        && sudo apt-get install jenkins -y \
+        && sudo systemctl start jenkins.service
+}
+
+addJenkinsKey () {
+if [ ! -f "/var/lib/jenkins/.ssh/id_rsa" ]; then
+  ssh-keygen -t rsa -N "" -f /var/lib/jenkins/.ssh/id_rsa
+fi
+cp /var/lib/jenkins/.ssh/id_rsa.pub /vagrant/jenkins.pub
+cat << 'SSHEOF' > /var/lib/jenkins/.ssh/config
+Host *
+  StrictHostKeyChecking no
+  UserKnownHostsFile=/dev/null
+SSHEOF
+chown -R jenkins:jenkins /var/lib/jenkins/.ssh/
+}
+
 if [[ $# -gt 0 ]]; then
     if [[ "$1" == "swarm" ]]; then
         shift 1
         installDocker
-    elif [[ "$1" == "jenkins" ]]; then
+    elif [[ "$2" == "yes" ]]; then
         shift 1
         installJenkins
+        addJenkinsKey
         installDocker
         installDocerCompose
         installK8s
