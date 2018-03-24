@@ -1,0 +1,88 @@
+# Master / Manager IP Address
+master_ip = "192.168.50.2"
+cluster_type = ENV['CLUSTER_TYPE']
+instances = []
+
+# Nodes reources
+numnodes = ENV['NODE_NUM'] || 2
+vmmemory = ENV['NODE_MEM'] || 512
+numcpu = ENV['NODE_CPU'] || 2
+
+# Number of nodes
+(1..numnodes).each do |n| 
+  instances.push({:name => "node-#{n}", :ip => "192.168.50.#{n+2}"})
+end
+
+Vagrant.configure("2") do |config|
+  config.vm.provider :virtualbox do |v|
+    v.memory = vmmemory
+    v.cpus = numcpu
+    v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    v.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+    v.customize ["modifyvm", :id, "--ioapic", "on"]
+  end
+
+#
+# Master / Manager
+#
+  config.vm.define "master" do |i|
+    i.vm.box = "ubuntu/xenial64"
+    i.vm.hostname = "master"
+    config.vm.synced_folder ".", "/vagrant"
+
+    config.ssh.insert_key = true
+    i.vm.network "private_network", ip: "#{master_ip}"
+    i.vm.provider :virtualbox do |vb|
+      vb.customize ["modifyvm", :id, "--memory", 512]
+      vb.customize ["modifyvm", :id, "--cpus", 2]
+    end
+    #
+    # Setup
+    #
+     i.vm.provision "shell", path: "scripts/provision.sh", :args => "#{cluster_type}"
+     i.vm.provision "shell", path: "scripts/master.sh", :args => "#{master_ip} #{cluster_type}"
+   end
+
+#
+# Nodes
+#
+  instances.each do |instance| 
+    config.vm.define instance[:name] do |i|
+      i.vm.box = "ubuntu/xenial64"
+      i.vm.hostname = instance[:name]
+      config.ssh.insert_key = true
+    #
+    # Setup
+    #
+     i.vm.network "private_network", ip: "#{instance[:ip]}"
+     i.vm.provision "shell", path: "scripts/provision.sh", :args => "#{cluster_type}"
+     i.vm.provision "shell", path: "scripts/node.sh", :args => "#{master_ip} #{cluster_type}"
+    end
+
+#
+# Jenkins
+#
+  config.vm.define "jenkins" do |i|
+    i.vm.box = "ubuntu/xenial64"
+    i.vm.hostname = "jenkins"
+    config.ssh.insert_key = true
+    i.vm.network "private_network", ip: "192.168.50.3"
+    i.vm.provider :virtualbox do |vb|
+      vb.customize ["modifyvm", :id, "--memory", 1024]
+      vb.customize ["modifyvm", :id, "--cpus", 2]
+    #
+    # Setup
+    #
+     i.vm.network "private_network", ip: "#{instance[:ip]}"
+     i.vm.provision "shell", path: "scripts/provision.sh", :args => "#{cluster_type}"
+     i.vm.provision "shell", path: "scripts/node.sh", :args => "#{master_ip} #{cluster_type}"
+    end
+  end
+    #
+    # Vagrant cache Plugin ?
+    #
+    if Vagrant.has_plugin?("vagrant-cachier")
+          config.cache.scope = :box
+        end
+  end
+end
